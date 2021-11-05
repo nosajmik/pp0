@@ -19,7 +19,7 @@
         const CACHE_SETS = 4096; const CACHE_WAYS = 16;
         const SET_SKIPPING_STEP = 2;
 
-        // To try out COUNT_SWEEPS mode (e.g. on the Tor Browser), 
+        // To try out COUNT_SWEEPS mode (e.g. on the Tor Browser),
         // increase SAMPLING_PERIOD_IN_MS to 100 and reduce MEASUREMENT_COUNT accordingly
         const MEASUREMENT_COUNT = 10;
         const SAMPLING_PERIOD_IN_MS = 100;
@@ -102,9 +102,9 @@
                     // nosajmik: the shifts of 10 and 4 are because evictionArray is
                     // a Uint32Array - where each array element is 32 bits = 4 bytes long,
                     // requiring log_2 4 = 2 bits for indexing. Hence the << 10 is effectively
-                    // << 12 for memory addresses, which is identical to * 4096 (page size), 
-                    // and the << 4 is effectively << 6 for addresses, which is identical to 
-                    // * 64 (cache line size). 
+                    // << 12 for memory addresses, which is identical to * 4096 (page size),
+                    // and the << 4 is effectively << 6 for addresses, which is identical to
+                    // * 64 (cache line size).
                     currentElement = (shuffledArray[0] << 10) + (set_index << 4);
                     this.setHeads[set_index] = currentElement;
                     // Outer loop iterates over cache ways, inner loop over the pages needed to cover all LLC sets
@@ -201,7 +201,9 @@
             }
 
             console.log('Trace returned: ' + resultArray);
-            document.getElementById("results").innerHTML = resultArray;
+            log(`Number of LLC-sized buffer traversals completed in ${SAMPLING_PERIOD_IN_MS} ms over ${MEASUREMENT_COUNT} trials:`)
+            log(resultArray + "<br>");
+            log(`Sum of buffer traversals: ${resultArray.reduce((a, b) => a + b)}`);
             console.log("Finished measurement")
         }
 
@@ -211,12 +213,16 @@
             createPPObject(CACHE_SETS, CACHE_WAYS);
             performMeasurement();
         }
+
+        function log(msg) {
+          document.getElementById("results").innerHTML += msg + "<br>";
+        }
     </script>
 </head>
 
 <body onload="go()">
 </body>
- 
+
 <div id="results" style="width:100%; word-wrap: break-word;"></div>
 <br>
 <a href="https://github.com/Yossioren/pp0">For more information</a>
