@@ -12,9 +12,10 @@
         /*
          Constants for cache size - pp0 used an i5-3470 for evaluation,
          which has a 6MB LLC with 12 ways. Hence 6 MB / 12 ways / 64 bytes per line
-         = 8192 cache sets. -nosajmik
+         = 8192 cache sets. I've changed it to work on an i7-7600u that I have for
+         experiments, which has a 16-way 4MB LLC (hence 4096 sets). -nosajmik
          */
-        const CACHE_SETS = 8192; const CACHE_WAYS = 12;
+        const CACHE_SETS = 4096; const CACHE_WAYS = 16;
         const SET_SKIPPING_STEP = 2;
 
         // To try out COUNT_SWEEPS mode (e.g. on the Tor Browser), 
@@ -34,6 +35,7 @@
         // Prime and probe object
         function PrimeProbe(sets, ways) {
             // Traversed to flush LLC
+            // Browsers will (usually) page-align large (32MB) arrays when allocating them
             this.evictionArray = new Uint32Array(32 * BYTES_PER_MB / Uint32Array.BYTES_PER_ELEMENT);
             // Contains the starting indices for pointer chasing for each cache set in a page
             this.setHeads = new Array(SETS_PER_PAGE);
