@@ -7,7 +7,8 @@
         // https://github.com/yossioren/pp0
 
         // if false, measure time. if true, measure how many cache sweeps we get until the clock changes
-        const COUNT_SWEEPS = false;
+        // nosajmik: need to use sweep mode because Firefox's timer is much more coarse than Chrome's
+        const COUNT_SWEEPS = true;
 
         /*
          Constants for cache size - pp0 used an i5-3470 for evaluation,
@@ -20,8 +21,8 @@
 
         // To try out COUNT_SWEEPS mode (e.g. on the Tor Browser), 
         // increase SAMPLING_PERIOD_IN_MS to 100 and reduce MEASUREMENT_COUNT accordingly
-        const MEASUREMENT_COUNT = 500;
-        const SAMPLING_PERIOD_IN_MS = 2;
+        const MEASUREMENT_COUNT = 10;
+        const SAMPLING_PERIOD_IN_MS = 100;
 
         const BYTES_PER_MB = 1024 * 1024;
         const BYTES_PER_LINE = 64;
@@ -29,6 +30,12 @@
         const SETS_PER_PAGE = 64;
 
         var PP;
+        /*
+         nosajmik: if COUNT_SWEEPS is false, this is the latency for probing the LLC-sized
+         buffer. If COUNT_SWEEPS is true, this is instead the number of iterations traversed
+         through the buffer during a sampling period. This is the output we'll see on the
+         webpage once it fully loads.
+         */
         var resultArray = {};
 
 
