@@ -200,6 +200,10 @@
                 while (currentTime < nextMeasurementStartTime);
             }
 
+            // Display sum of iterations for better contrast
+            // Run this in Chrome and Firefox; if you only refresh the page for one browser,
+            // the # of iterations should be relatively high. If you refresh both browsers,
+            // they will show a relatively lower # of iterations due to LLC activity.
             console.log('Trace returned: ' + resultArray);
             log(`Number of LLC-sized buffer traversals completed in ${SAMPLING_PERIOD_IN_MS} ms over ${MEASUREMENT_COUNT} trials:`)
             log(resultArray + "<br>");
@@ -214,6 +218,9 @@
             performMeasurement();
         }
 
+        /*
+         nosajmik: just a cleaner way to put stuff on the DOM
+         */
         function log(msg) {
           document.getElementById("results").innerHTML += msg + "<br>";
         }
