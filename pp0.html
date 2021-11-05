@@ -9,7 +9,11 @@
         // if false, measure time. if true, measure how many cache sweeps we get until the clock changes
         const COUNT_SWEEPS = false;
 
-        // Cache size constants.
+        /*
+         Constants for cache size - pp0 used an i5-3470 for evaluation,
+         which has a 6MB LLC with 12 ways. Hence 6 MB / 12 ways / 64 bytes per line
+         = 8192 cache sets. -nosajmik
+         */
         const CACHE_SETS = 8192; const CACHE_WAYS = 12;
         const SET_SKIPPING_STEP = 2;
 
@@ -20,18 +24,24 @@
 
         const BYTES_PER_MB = 1024 * 1024;
         const BYTES_PER_LINE = 64;
+        // 4KB page / 64 bytes per cache line = 64 cache sets per page
         const SETS_PER_PAGE = 64;
 
-        var PP = {};
+        var PP;
         var resultArray = {};
 
 
         // Prime and probe object
         function PrimeProbe(sets, ways) {
+            // Traversed to flush LLC
             this.evictionArray = new Uint32Array(32 * BYTES_PER_MB / Uint32Array.BYTES_PER_ELEMENT);
+            // Contains the starting indices for pointer chasing for each cache set in a page
             this.setHeads = new Array(SETS_PER_PAGE);
 
             this.probeSet = function (setOffset) {
+                // Performs pointer chasing to access LLC-sized buffer s.t.
+                // loads are serially dependent; prevents reordering or combining
+                // loads, or the prefetcher. -nosajmik
                 var pointer = this.setHeads[setOffset];
                 var listHead = pointer;
                 do {
@@ -40,15 +50,9 @@
                 return pointer;
             }
 
-            this.probeSets = function (sets) {
-                // Probe some of the sets in the page
-                for (setOffset in sets) {
-                    this.probeSet(sets[setOffset]);
-                }
-            }
-
             this.probeAllSets = function () {
                 var p;
+                // Every other set
                 for (var set = 0; set < SETS_PER_PAGE; set += SET_SKIPPING_STEP) {
                     p = this.probeSet(set);
                 }
@@ -69,7 +73,9 @@
             }
 
             this.createSetHeads = function (sets, ways) {
+                // 128 pages needed to cover all LLC sets
                 var unshuffledArray = new Uint32Array(sets / SETS_PER_PAGE);
+                // The + 4 comes from evictionArray being a Uint32Array (see below) -nosajmik
                 var allSetOffset = Math.log2(sets) + 4; // 17 for sets=8192, 16 for sets=4096
                 var i;
                 for (i = 0; i < unshuffledArray.length; i++) {
@@ -84,8 +90,15 @@
                 var currentElement, nextElement;
 
                 for (set_index = 0; set_index < SETS_PER_PAGE; set_index++) {
+                    // nosajmik: the shifts of 10 and 4 are because evictionArray is
+                    // a Uint32Array - where each array element is 32 bits = 4 bytes long,
+                    // requiring log_2 4 = 2 bits for indexing. Hence the << 10 is effectively
+                    // << 12 for memory addresses, which is identical to * 4096 (page size), 
+                    // and the << 4 is effectively << 6 for addresses, which is identical to 
+                    // * 64 (cache line size). 
                     currentElement = (shuffledArray[0] << 10) + (set_index << 4);
                     this.setHeads[set_index] = currentElement;
+                    // Outer loop iterates over cache ways, inner loop over the pages needed to cover all LLC sets
                     for (line_index = 0; line_index < ways; line_index++) {
                         for (element_index = 0; element_index < sets / SETS_PER_PAGE - 1; element_index++) {
                             nextElement = (line_index << allSetOffset) + (shuffledArray[element_index + 1] << 10) + (set_index << 4);
@@ -134,6 +147,9 @@
 
             // Spin until we're ready for the next measurement
             do {
+                // nosajmik: performance.now() returns a relatively high-resolution
+                // timestamp of time elapsed since page load. Subtracting two calls to
+                // performance.now() gives the time delta.
                 currentTime = performance.now();
             }
             while (currentTime < nextMeasurementStartTime);
@@ -148,6 +164,8 @@
                 if (COUNT_SWEEPS == true) {
                     var sweeps = 0;
                     // repeatedly perform the measurement until the clock changes
+                    // nosajmik: sweeps are basically repeating the measurement to amplify
+                    // timing differences, if we have a very coarse-grained timer.
                     do {
                         currentTime = performance.now();
                         sweeps++;
