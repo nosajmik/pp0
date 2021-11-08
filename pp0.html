@@ -144,18 +144,57 @@
             return (performance.now() - startTime);
         }
 
+
         function send(bitValue) {
             // nosajmik: performance.now() returns the number of microseconds
             // or milliseconds (depends on browser) since the page loaded. Since
             // coarse-grained timers are okay due to sweep counting, I changed the
             // spin phase to Date.now(), which is the # of milliseconds since the
-            // Unix epoch.
+            // Unix epoch. This is a first step to synchronizing the sender and receiver.
             let currentTime;
             do {
                 currentTime = Date.now();
-            } while (!(currentTime % SAMPLING_PERIOD_IN_MS));
-            log(currentTime);
+            } while (currentTime % SAMPLING_PERIOD_IN_MS != 0);
+
+            // To send a 1 bit, probe the evictionArray repeatedly during the
+            // sampling period; to send a 0 bit, spin and do nothing.
+            let cond = bitValue & 1;
+            for (let i = 0; i < MEASUREMENT_COUNT; i++) {
+                let nextMeasurementStartTime = currentTime + SAMPLING_PERIOD_IN_MS;
+                if (cond) {
+                    do {
+                        currentTime = Date.now();
+                        PP.probeAllSets();
+                    } while (currentTime < nextMeasurementStartTime);
+                } else {
+                    do {
+                        currentTime = Date.now();
+                    } while (currentTime < nextMeasurementStartTime);
+                }
+            }
         }
+
+
+        function recv() {
+            // nosajmik: receive uses the same 'current time modulo sampling period'
+            // spin phase for (coarse) synchronization.
+            let currentTime;
+            do {
+                currentTime = Date.now();
+            } while (currentTime % SAMPLING_PERIOD_IN_MS != 0);
+
+            let sweeps = 0;
+            for (let i = 0; i < MEASUREMENT_COUNT; i++) {
+                let nextMeasurementStartTime = currentTime + SAMPLING_PERIOD_IN_MS;
+                do {
+                    currentTime = Date.now();
+                    sweeps++;
+                    PP.probeAllSets();
+                } while (currentTime < nextMeasurementStartTime);
+            }
+            return sweeps;
+        }
+
 
         function performMeasurement() {
             console.log("Starting measurement")
