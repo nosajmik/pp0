@@ -7,10 +7,10 @@
         // https://github.com/yossioren/pp0
 
         /*
-         Constants for cache size - pp0 used an i5-3470 for evaluation,
+         nosajmik: constants for cache size - pp0 used an i5-3470 for evaluation,
          which has a 6MB LLC with 12 ways. Hence 6 MB / 12 ways / 64 bytes per line
          = 8192 cache sets. I've changed it to work on an i7-7600u that I have for
-         experiments, which has a 16-way 4MB LLC (hence 4096 sets). -nosajmik
+         experiments, which has a 16-way 4MB LLC (hence 4096 sets).
          */
         const CACHE_SETS = 4096; const CACHE_WAYS = 16;
         const SET_SKIPPING_STEP = 2;
@@ -45,9 +45,9 @@
             this.setHeads = new Array(SETS_PER_PAGE);
 
             this.probeSet = function (setOffset) {
-                // Performs pointer chasing to access LLC-sized buffer s.t.
+                // nosajmik: performs pointer chasing to access LLC-sized buffer s.t.
                 // loads are serially dependent; prevents reordering or combining
-                // loads, or the prefetcher. -nosajmik
+                // loads, or the prefetcher.
                 var pointer = this.setHeads[setOffset];
                 var listHead = pointer;
                 do {
@@ -81,7 +81,7 @@
             this.createSetHeads = function (sets, ways) {
                 // 128 pages needed to cover all LLC sets
                 var unshuffledArray = new Uint32Array(sets / SETS_PER_PAGE);
-                // The + 4 comes from evictionArray being a Uint32Array (see below) -nosajmik
+                // nosajmik: the + 4 comes from evictionArray being a Uint32Array (see below)
                 var allSetOffset = Math.log2(sets) + 4; // 17 for sets=8192, 16 for sets=4096
                 var i;
                 for (i = 0; i < unshuffledArray.length; i++) {
