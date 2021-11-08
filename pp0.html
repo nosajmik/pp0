@@ -6,10 +6,6 @@
         // Artifact repository for PP0 - for more information see
         // https://github.com/yossioren/pp0
 
-        // if false, measure time. if true, measure how many cache sweeps we get until the clock changes
-        // nosajmik: need to use sweep mode because Firefox's timer is much more coarse than Chrome's
-        const COUNT_SWEEPS = true;
-
         /*
          Constants for cache size - pp0 used an i5-3470 for evaluation,
          which has a 6MB LLC with 12 ways. Hence 6 MB / 12 ways / 64 bytes per line
@@ -21,6 +17,8 @@
 
         // To try out COUNT_SWEEPS mode (e.g. on the Tor Browser),
         // increase SAMPLING_PERIOD_IN_MS to 100 and reduce MEASUREMENT_COUNT accordingly
+        // nosajmik: removed all non-sweep code, since we need it due to reduced timer
+        // precision (1ms) on Firefox (predicted to be more on Tor Browser).
         const MEASUREMENT_COUNT = 10;
         const SAMPLING_PERIOD_IN_MS = 100;
 
@@ -31,8 +29,7 @@
 
         var PP;
         /*
-         nosajmik: if COUNT_SWEEPS is false, this is the latency for probing the LLC-sized
-         buffer. If COUNT_SWEEPS is true, this is instead the number of iterations traversed
+         nosajmik: This is the number of iterations traversed
          through the buffer during a sampling period. This is the output we'll see on the
          webpage once it fully loads.
          */
@@ -221,28 +218,18 @@
                 // Prepare for the next measurement
                 nextMeasurementStartTime += SAMPLING_PERIOD_IN_MS;
 
-                if (COUNT_SWEEPS == true) {
-                    var sweeps = 0;
-                    // repeatedly perform the measurement until the clock changes
-                    // nosajmik: sweeps are basically repeating the measurement to amplify
-                    // timing differences, if we have a very coarse-grained timer.
-                    do {
-                        currentTime = performance.now();
-                        sweeps++;
-                        PP.probeAllSets();
-                    } while (currentTime < nextMeasurementStartTime);
-                } else {
-                    // otherwise, perform the measurement
-                    PP.probeAllSets(SET_SKIPPING_STEP);
-                }
+                var sweeps = 0;
+                // repeatedly perform the measurement until the clock changes
+                // nosajmik: sweeps are basically repeating the measurement to amplify
+                // timing differences, if we have a very coarse-grained timer.
+                do {
+                    currentTime = performance.now();
+                    sweeps++;
+                    PP.probeAllSets();
+                } while (currentTime < nextMeasurementStartTime);
 
-                // Log the time it took
-                if (COUNT_SWEEPS == true) {
-                    // log how many spins it took until the clock ticked again
-                    resultArray[measurement_index] = sweeps;
-                } else {
-                    resultArray[measurement_index] = (performance.now() - currentTime).toFixed(3);
-                }
+                // log how many spins it took until the clock ticked again
+                resultArray[measurement_index] = sweeps;
 
                 // Spin until the next measurement starts
                 do {
