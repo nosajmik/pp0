@@ -144,6 +144,18 @@
             return (performance.now() - startTime);
         }
 
+        function send(bitValue) {
+            // nosajmik: performance.now() returns the number of microseconds
+            // or milliseconds (depends on browser) since the page loaded. Since
+            // coarse-grained timers are okay due to sweep counting, I changed the
+            // spin phase to Date.now(), which is the # of milliseconds since the
+            // Unix epoch.
+            let currentTime;
+            do {
+                currentTime = Date.now();
+            } while (!(currentTime % SAMPLING_PERIOD_IN_MS));
+            log(currentTime);
+        }
 
         function performMeasurement() {
             console.log("Starting measurement")
