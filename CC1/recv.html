@@ -32,6 +32,9 @@
         // 4KB page / 64 bytes per cache line = 64 cache sets per page
         const SETS_PER_PAGE = 64;
 
+        const MESSAGE_LENGTH = 16;
+        const SWEEPS_THRESHOLD = 121;
+
         var PP;
         /*
          nosajmik: This is the number of iterations traversed
@@ -275,14 +278,14 @@
             do {
                 currentTime = Date.now();
             } while (currentTime % 2000 != 0);
-            for (let i = 0; i < 32; i++) {
+            for (let i = 0; i < MESSAGE_LENGTH; i++) {
                 let currentTime;
                 do {
                     currentTime = Date.now();
                 } while (currentTime % 1000 != 0);
                 var sweeps = recv();
-                // console.log(sweeps);
-                if(sweeps < 165){
+                console.log(sweeps);
+                if(sweeps < SWEEPS_THRESHOLD){
                     secret += "1";
                     console.log(1);
                 } else {
