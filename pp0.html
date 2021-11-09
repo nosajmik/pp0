@@ -10,10 +10,17 @@
          nosajmik: constants for cache size - pp0 used an i5-3470 for evaluation,
          which has a 6MB LLC with 12 ways. Hence 6 MB / 12 ways / 64 bytes per line
          = 8192 cache sets. I've changed it to work on an i7-7600u that I have for
-         experiments, which has a 16-way 4MB LLC (hence 4096 sets).
+         experiments, which has a 16-way 4MB LLC (hence 4096 sets). RECV_THRESHOLD
+         is the number of sweeps above which the receiver will read a zero bit, and
+         below which it will read a one bit. This parameter may also need manual
+         calibration per machine. Currently, synchronization is tested by checking
+         if the receiver can read the calibration prefix, which is just one byte,
+         but a 1/256 chance may be adequate for now.
          */
         const CACHE_SETS = 4096; const CACHE_WAYS = 16;
         const SET_SKIPPING_STEP = 2;
+        const RECV_THRESHOLD = 650;
+        const CALIBRATION_PREFIX = 0b11001010;
 
         // To try out COUNT_SWEEPS mode (e.g. on the Tor Browser),
         // increase SAMPLING_PERIOD_IN_MS to 100 and reduce MEASUREMENT_COUNT accordingly
@@ -58,11 +65,10 @@
 
             this.probeAllSets = function () {
                 var p;
-                // Every other set
+                // Every other set with default skipping step
                 for (var set = 0; set < SETS_PER_PAGE; set += SET_SKIPPING_STEP) {
                     p = this.probeSet(set);
                 }
-
                 return p;
             }
 
@@ -74,7 +80,6 @@
                     arrayToShuffle[current] = arrayToShuffle[top];
                     arrayToShuffle[top] = tmp;
                 }
-
                 return arrayToShuffle;
             }
 
@@ -89,14 +94,12 @@
                 for (i = 0; i < unshuffledArray.length; i++) {
                     unshuffledArray[i] = i;
                 }
-
                 // Shuffle the array
                 var shuffledArray = this.shuffle(unshuffledArray);
 
                 // Now write into the eviction buffer
                 var set_index, element_index, line_index;
                 var currentElement, nextElement;
-
                 for (set_index = 0; set_index < SETS_PER_PAGE; set_index++) {
                     // nosajmik: the shifts of 10 and 4 are because evictionArray is
                     // a Uint32Array - where each array element is 32 bits = 4 bytes long,
@@ -174,6 +177,14 @@
         }
 
 
+        // nosajmik: wrapper for send()
+        function sendByte(byteValue) {
+            for (let shift = 7; shift >= 0; shift--) {
+                send((byteValue >> shift) & 1);
+            }
+        }
+
+
         function recv() {
             // nosajmik: receive uses the same 'current time modulo sampling period'
             // spin phase for (coarse) synchronization.
@@ -191,7 +202,45 @@
                     PP.probeAllSets();
                 } while (currentTime < nextMeasurementStartTime);
             }
-            return sweeps;
+            // return sweeps;
+            return RECV_THRESHOLD > 625 ? 0 : 1;
+        }
+
+
+        /*
+         nosajmik: wrapper for recv(). If you want to determine a suitable
+         RECV_THRESHOLD for your machine, uncomment the "return sweeps;" in
+         recv() and the commented lines below. Doing so will return the number
+         of sweeps for each bit position.
+         */
+        function recvByte() {
+            // let byte = [];
+            // for (let i = 0; i < 8; i++) byte.push(recv());
+            // return byte;
+            let byte = 0;
+            for (let shift = 7; shift >= 0; shift--) {
+                byte |= (recv() << shift);
+            }
+            return byte;
+        }
+
+
+        /*
+         nosajmik: second step towards sender-receiver synchronization in
+         addition to starting transmissions at a multiple of the sampling
+         period. Run this function on one browser, and try:
+         while (true) sendByte(CALIBRATION_PREFIX);
+         */
+        function tryCalibrateReceiver() {
+            let res = recvByte();
+            console.log((res >>> 0).toString(2));
+            if (res != CALIBRATION_PREFIX) {
+                // nosajmik: re-run receiver after random delay between
+                // 1ms and the sampling period
+                setTimeout(tryCalibrateReceiver, Math.random() * SAMPLING_PERIOD_IN_MS + 1);
+            } else {
+                console.log("Calibrated!")
+            }
         }
 
 
