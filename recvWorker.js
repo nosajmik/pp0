@@ -72,7 +72,7 @@ function PrimeProbe(sets, ways) {
         // 128 pages needed to cover all LLC sets
         var unshuffledArray = new Uint32Array(sets / SETS_PER_PAGE);
         // nosajmik: the + 4 comes from evictionArray being a Uint32Array (see below)
-        var allSetOffset = 14 + 4; // 17 for sets=8192, 16 for sets=4096
+        var allSetOffset = Math.ceil(Math.log2(sets)) + 4; // 17 for sets=8192, 16 for sets=4096
         var i;
         for (i = 0; i < unshuffledArray.length; i++) {
             unshuffledArray[i] = i;
