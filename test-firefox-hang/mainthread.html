@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script>
+            function go() {
+                let arr = new Uint8Array(32 * 1024 * 1024);
+                let junk = 0;
+
+                while (true) {
+                    junk ^= arr[Math.random() * arr.length];
+                }
+            };
+        </script>
+    </head>
+    <body>
+        <button onclick="go()">Start</button>
+        <br>
+        Click start, then right-click on the page or open devtools. Because the computation happens on the main thread, Firefox will complain.
+    </body>
+</html>

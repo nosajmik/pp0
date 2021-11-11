@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script>
+            function go() {
+                var worker = new Worker("./test.js");
+            }                
+        </script>
+    </head>
+    <body>
+        <button onclick="go()">Start</button>
+        <br>
+        Click start, then right-click on the page or open devtools. Because the computation happens in the web worker, the main thread stays free of blockage, and Firefox will not complain.
+    </body>
+</html>
