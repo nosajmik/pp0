@@ -17,6 +17,13 @@ const SET_SKIPPING_STEP = 2;
 const MEASUREMENT_COUNT = 10;
 const SAMPLING_PERIOD_IN_MS = 100;
 
+// Testing parameters - will change to something larger once
+// we get the UUID part going. CHUNK_LEN must be greater than
+// UUID_LEN + 2 * PREFIX.length
+const CHUNK_LEN = 100;
+const UUID_LEN = 32;
+const PREFIX = "11001010";
+
 // Threshold - # sweeps above will be registered as zero bit, otherwise one
 // Seems to work well on i7-9750H and i7-10710U
 const SWEEPS_THRESHOLD = 121;
@@ -144,19 +151,39 @@ onmessage = function(e) {
     createPPObject(CACHE_SETS, CACHE_WAYS);
     postMessage("Created listener Prime+Probe object");
 
-    while (true) {
-    // for (let i = 0; i < 20; i++) {
-        // Sender performs send -> wait till next second to send next bit
-        // Receiver performs wait till next second -> recv -> wait again
-        // This prevents the scheduler from causing insertions/deletions
-        // in contrast to a scheme where both the sender and receiver probe.
-        let currentTime;
-        do {
-            currentTime = Date.now();
-        } while (currentTime % 1000 != 0);
-        var sweeps = recv();
-        // postMessage(sweeps);
-        let bit = sweeps < SWEEPS_THRESHOLD ? 1 : 0;
-        postMessage(bit);
+    function recvChunk() {
+        let chunk = "";
+        // while (true) {
+        for (let i = 0; i < CHUNK_LEN; i++) {
+            // Sender performs send -> wait till next second to send next bit
+            // Receiver performs wait till next second -> recv -> wait again
+            // This prevents the scheduler from causing insertions/deletions
+            // in contrast to a scheme where both the sender and receiver probe.
+            let currentTime;
+            do {
+                currentTime = Date.now();
+            } while (currentTime % 1000 != 0);
+            var sweeps = recv();
+            // postMessage(sweeps);
+            let bit = sweeps < SWEEPS_THRESHOLD ? "1" : "0";
+            chunk += bit;
+        }
+    
+        // Prefix, 32 zeros or ones, then prefix. Change soon to accommodate UUID
+        let regex = new RegExp(PREFIX + `[0,1]{${UUID_LEN}}` + PREFIX);
+        let index = chunk.search(regex);
+        if (index >= 0) {
+            let uuid = chunk.substring(index + PREFIX.length, index + PREFIX.length + UUID_LEN);
+            // This would be an AJAX call to the server in the future
+            postMessage(`UUID read: ${uuid}`);
+        } else {
+            // TODO: search for the prefix only to determine if the sender is active.
+            // If there is no prefix, stay inactive for longer.
+            postMessage("Not found, retrying");
+            setTimeout(recvChunk, 5000);
+        }
     }
+
+    // Will read intermittently in chunks until success
+    recvChunk();
 }

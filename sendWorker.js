@@ -17,6 +17,12 @@ const SET_SKIPPING_STEP = 2;
 const MEASUREMENT_COUNT = 10;
 const SAMPLING_PERIOD_IN_MS = 100;
 
+// Constants for messages
+const prefix = [1, 1, 0, 0, 1, 0, 1, 0];
+const deadbeefUUID = [1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1];
+// This is 0xdeadbeef bit-by-bit, just for testing purposes
+const message = prefix.concat(deadbeefUUID);
+
 const BYTES_PER_MB = 1024 * 1024;
 const BYTES_PER_LINE = 64;
 // 4KB page / 64 bytes per cache line = 64 cache sets per page
@@ -151,10 +157,6 @@ function send(bitValue) {
 onmessage = function(e) {
     createPPObject(CACHE_SETS, CACHE_WAYS);
     postMessage("Created sender Prime+Probe object");
-    let prefix = [1, 1, 0, 0, 1, 0, 1, 0];
-    let deadbeefUUID = [1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1];
-    // This is 0xdeadbeef bit-by-bit, just for testing purposes
-    var message = prefix.concat(deadbeefUUID);
     postMessage(message);
 
     while (true) {
