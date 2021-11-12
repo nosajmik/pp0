@@ -17,17 +17,6 @@ const SET_SKIPPING_STEP = 2;
 const MEASUREMENT_COUNT = 10;
 const SAMPLING_PERIOD_IN_MS = 100;
 
-// Testing parameters - will change to something larger once
-// we get the UUID part going. CHUNK_LEN must be greater than
-// UUID_LEN + 2 * PREFIX.length
-const CHUNK_LEN = 100;
-const UUID_LEN = 32;
-const PREFIX = "11001010";
-
-// Threshold - # sweeps above will be registered as zero bit, otherwise one
-// Seems to work well on i7-9750H and i7-10710U
-const SWEEPS_THRESHOLD = 121;
-
 const BYTES_PER_MB = 1024 * 1024;
 const BYTES_PER_LINE = 64;
 // 4KB page / 64 bytes per cache line = 64 cache sets per page
@@ -130,60 +119,55 @@ function createPPObject(sets, ways) {
 }
 
 
-function recv() {
-    // nosajmik: receive uses the same 'current time modulo sampling period'
-    // spin phase for (coarse) synchronization.
+function send(bitValue) {
+    postMessage(bitValue);
+    // nosajmik: performance.now() returns the number of microseconds
+    // or milliseconds (depends on browser) since the page loaded. Since
+    // coarse-grained timers are okay due to sweep counting, I changed the
+    // spin phase to Date.now(), which is the # of milliseconds since the
+    // Unix epoch. This is a first step to synchronizing the sender and receiver.
     let currentTime;
-    let sweeps = 0;
+
+    // To send a 1 bit, probe the evictionArray repeatedly during the
+    // sampling period; to send a 0 bit, spin and do nothing.
+    let cond = bitValue & 1;
+
     for (let i = 0; i < MEASUREMENT_COUNT; i++) {
         let nextMeasurementStartTime = currentTime + SAMPLING_PERIOD_IN_MS;
-        do {
-            currentTime = Date.now();
-            sweeps++;
-            PP.probeAllSets();
-        } while (currentTime < nextMeasurementStartTime);
+        if (cond) {
+            do {
+                currentTime = Date.now();
+                PP.probeAllSets();
+            } while (currentTime < nextMeasurementStartTime);
+        } else {
+            do {
+                currentTime = Date.now();
+            } while (currentTime < nextMeasurementStartTime);
+        }
     }
-    return sweeps;
 }
 
 
 onmessage = function(e) {
     createPPObject(CACHE_SETS, CACHE_WAYS);
-    postMessage("Created listener Prime+Probe object");
+    postMessage("Created sender Prime+Probe object");
+    // Constants for messages
+    const prefix = e.data[0];
+    const uuid = e.data[1];
+    const message = prefix + uuid;
+    postMessage(message);
 
-    function recvChunk() {
-        let chunk = "";
-        // while (true) {
-        for (let i = 0; i < CHUNK_LEN; i++) {
-            // Sender performs send -> wait till next second to send next bit
-            // Receiver performs wait till next second -> recv -> wait again
-            // This prevents the scheduler from causing insertions/deletions
-            // in contrast to a scheme where both the sender and receiver probe.
+    while (true) {
+        // Sender performs send -> wait till next second to send next bit
+        // Receiver performs wait till next second -> recv -> wait again
+        // This prevents the scheduler from causing insertions/deletions
+        // in contrast to a scheme where both the sender and receiver probe.
+        for (let i = 0; i < message.length; i++) {
+            send(message[i]);
             let currentTime;
             do {
                 currentTime = Date.now();
             } while (currentTime % 1000 != 0);
-            var sweeps = recv();
-            // postMessage(sweeps);
-            let bit = sweeps < SWEEPS_THRESHOLD ? "1" : "0";
-            chunk += bit;
-        }
-    
-        // Prefix, 32 zeros or ones, then prefix. Change soon to accommodate UUID
-        let regex = new RegExp(PREFIX + `[0,1]{${UUID_LEN}}` + PREFIX);
-        let index = chunk.search(regex);
-        if (index >= 0) {
-            let uuid = chunk.substring(index + PREFIX.length, index + PREFIX.length + UUID_LEN);
-            // This would be an AJAX call to the server in the future
-            postMessage(`UUID read: ${uuid}`);
-        } else {
-            // TODO: search for the prefix only to determine if the sender is active.
-            // If there is no prefix, stay inactive for longer.
-            postMessage("Not found, retrying");
-            setTimeout(recvChunk, 5000);
         }
     }
-
-    // Will read intermittently in chunks until success
-    recvChunk();
 }

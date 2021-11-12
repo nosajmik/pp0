@@ -1,19 +1,19 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <button id="gobut" onclick="go()">RECV</button>
+    <button id="gobut" onclick="go()">SEND</button>
     <script>
         var myButton = document.getElementById('gobut');
         myButton.style.height = '500px';
         myButton.style.width= '1200px';
-        
-        var worker = new Worker("./recvWorker.js");
+
+        var worker = new Worker("{{url_for('static', filename='sendWorker.js')}}");
         worker.onmessage = function(e) {
             console.log(e.data);
         }
 
         function go() {
-            worker.postMessage("Junk");
+            worker.postMessage(["{{prefix}}", "{{identifier}}"]);
         }
     </script>
 </head>
