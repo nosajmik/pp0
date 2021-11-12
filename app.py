@@ -1,6 +1,6 @@
 import uuid
 from bitarray import bitarray
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 uuids = set()
@@ -9,24 +9,30 @@ prefix = bitarray("11001010")
 
 @app.route("/send")
 def sender():
-    identifierBits = None
     while True:
+        candidate = (uuid.uuid4().int >> 64).to_bytes(8, "big")
         bits = bitarray()
-        candidate = uuid.uuid4()
-        bits.frombytes(candidate.bytes)
-        if (prefix not in bits) and (str(candidate) not in uuids):
-            uuids.add(str(candidate))
-            print(str(candidate))
-            identifierBits = bits
-            break
-    print(prefix.to01())
-    print(identifierBits.to01())
-    return render_template("send.html", prefix=prefix.to01(), identifier=identifierBits.to01())
+        bits.frombytes(candidate)
+        if (prefix not in bits) and (bits.to01() not in uuids):
+            uuids.add(bits.to01())
+            print(prefix.to01())
+            print(bits.to01())
+            return render_template("send.html", prefix=prefix.to01(), identifier=bits.to01())
 
 
 @app.route("/recv")
 def receiver():
     return render_template("recv.html", prefix=prefix.to01())
+
+
+@app.route("/upload")
+def receiverUpload():
+    identifier = request.args.get("uuid")
+    print(identifier)
+    if identifier in uuids:
+        print("Match found")
+    # No content to return
+    return ('', 204)
 
 
 if __name__ == '__main__':
