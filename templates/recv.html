@@ -1,11 +1,11 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <button id="gobut" onclick="go()">RECV</button>
+    <button id="gobut" onclick="go()">Start Receiving</button>
     <script>
         var myButton = document.getElementById('gobut');
-        myButton.style.height = '500px';
-        myButton.style.width= '1200px';
+        myButton.style.height = '100px';
+        myButton.style.width= '300px';
         
         var worker = new Worker("{{url_for('static', filename='recvWorker.js')}}");
         worker.onmessage = function(e) {

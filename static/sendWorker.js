@@ -155,7 +155,7 @@ onmessage = function(e) {
     const prefix = e.data[0];
     const uuid = e.data[1];
     const message = prefix + uuid;
-    postMessage(message);
+    postMessage(`Message to transmit: ${message}`);
 
     while (true) {
         // Sender performs send -> wait till next second to send next bit

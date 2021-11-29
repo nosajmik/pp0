@@ -20,8 +20,8 @@ const SAMPLING_PERIOD_IN_MS = 100;
 // Testing parameters - will change to something larger once
 // we get the UUID part going. CHUNK_LEN must be greater than
 // UUID_LEN + 2 * PREFIX.length
-const CHUNK_LEN = 200;
-const UUID_LEN = 64;
+const CHUNK_LEN = 70;
+const UUID_LEN = 32;
 
 // Threshold - # sweeps above will be registered as zero bit, otherwise one
 // Seems to work well on i7-9750H and i7-10710U
@@ -183,7 +183,7 @@ onmessage = function(e) {
             // TODO: search for the prefix only to determine if the sender is active.
             // If there is no prefix, stay inactive for longer.
             postMessage("No match found, retrying in 5 seconds")
-            postMessage(chunk);
+            postMessage(`Bytes read: ${chunk}`);
             setTimeout(recvChunk, 5000);
         }
     }
